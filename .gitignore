@@ -1,4 +1,44 @@
+# Secrets & local env
 .env
+.env.*
+!.env.example
+frontend/.env.production
+
+# Conversation memory (may contain personal chat content)
+memory/*
+
+# Lambda build artifacts
 lambda-deployment.zip
 lambda-package/
-memory/*
+
+# Terraform — keep IaC, never commit state / local caches
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Node
+node_modules/
+out/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+uv.lock
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
