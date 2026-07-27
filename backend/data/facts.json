@@ -1,0 +1,153 @@
+{
+    "identity": {
+        "full_name": "Vitor Diogo Alves",
+        "preferred_name": "Vitor",
+        "current_role": "Senior Frontend Software Engineer",
+        "headline": "Senior Frontend Engineer specializing in React, TypeScript, AI-powered applications, and scalable enterprise software.",
+        "location": {
+            "city": "Franca",
+            "state": "São Paulo",
+            "country": "Brazil",
+            "timezone": "America/Sao_Paulo"
+        }
+    },
+    "summary": {
+        "years_of_experience": 10,
+        "bio": "I'm a Senior Frontend Software Engineer with over 10 years of experience building enterprise-grade web applications. My expertise lies in React, TypeScript, frontend architecture, performance optimization, and AI-powered developer tools. I've worked with international teams delivering scalable SaaS platforms, modernizing large codebases, and creating reusable component libraries that improve developer productivity.",
+        "interests": [
+            "Artificial Intelligence",
+            "Frontend Architecture",
+            "Developer Experience",
+            "Cloud Computing",
+            "Performance Optimization",
+            "Investing",
+            "Entrepreneurship",
+            "Motorsports"
+        ]
+    },
+    "contact": {
+        "email": "vitordgav@gmail.com",
+        "linkedin": "https://www.linkedin.com/in/vitor-diogo-alves-4927ba7a/"
+    },
+    "skills": {
+        "languages": [
+            "TypeScript",
+            "JavaScript",
+            "Python",
+            "Java"
+        ],
+        "frontend": [
+            "React",
+            "Redux",
+            "Material UI",
+            "Styled Components",
+            "Semantic UI",
+            "HTML5",
+            "CSS3"
+        ],
+        "backend": [
+            "FastAPI",
+            "Spring Boot",
+            "Flask",
+            "REST APIs"
+        ],
+        "databases": [
+            "PostgreSQL",
+            "MySQL"
+        ],
+        "cloud": [
+            "AWS",
+            "Google Cloud Platform",
+            "Azure"
+        ],
+        "devops": [
+            "Docker",
+            "Kubernetes",
+            "GitHub Actions",
+            "GitLab CI/CD"
+        ],
+        "testing": [
+            "Jest",
+            "Playwright",
+            "Pytest",
+            "React Testing Library"
+        ],
+        "specialties": [
+            "Frontend Architecture",
+            "Enterprise SaaS Applications",
+            "Performance Optimization",
+            "Design Systems",
+            "AI-powered Applications",
+            "Developer Experience",
+            "Technical Leadership"
+        ]
+    },
+    "experience": [
+        {
+            "company": "Domo",
+            "role": "Senior Frontend Software Engineer",
+            "current": true,
+            "summary": "Building enterprise analytics products with React and TypeScript, developing scalable frontend architecture, reusable components, and AI-assisted features for global customers.",
+            "technologies": [
+                "React",
+                "TypeScript",
+                "Material UI",
+                "Jest",
+                "Playwright"
+            ]
+        },
+        {
+            "company": "Uber (via FullStack Labs)",
+            "role": "Senior Frontend Software Engineer",
+            "summary": "Led frontend development of internal AI-powered platforms, modernized React applications, built configuration-driven UI frameworks, and contributed to LLM-powered workflow generation tools.",
+            "technologies": [
+                "React",
+                "TypeScript",
+                "Redux",
+                "Python",
+                "AI/LLMs"
+            ]
+        },
+        {
+            "company": "Luizalabs",
+            "role": "Full Stack Software Engineer",
+            "summary": "Developed cloud-native applications, participated in microservices migration, built frontend and backend features, and worked with distributed systems.",
+            "technologies": [
+                "React",
+                "Java",
+                "Spring Boot",
+                "Google Cloud",
+                "Kubernetes"
+            ]
+        },
+        {
+            "company": "Eddydata Tecnologia e Gestão",
+            "role": "Full Stack Software Engineer",
+            "summary": "Designed and developed web applications for business management systems, working across frontend, backend, and database layers.",
+            "technologies": [
+                "Java",
+                "JavaScript",
+                "PostgreSQL",
+                "MySQL"
+            ]
+        }
+    ],
+    "education": [
+        {
+            "degree": "Bachelor's Degree",
+            "field": "Information Systems",
+            "institution": "UniFACEF",
+            "graduation_year": 2016
+        }
+    ],
+    "languages": [
+        {
+            "language": "Portuguese",
+            "proficiency": "Native"
+        },
+        {
+            "language": "English",
+            "proficiency": "Professional Working Proficiency"
+        }
+    ]
+}
