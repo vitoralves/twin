@@ -1,25 +1,47 @@
+'use client';
+
+import { useState } from 'react';
+import DemoBanner from '@/components/demo-banner';
 import Twin from '@/components/twin';
 
 export default function Home() {
+  const [quota, setQuota] = useState<{ remaining: number; daily_limit: number } | null>(null);
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-center text-gray-800 mb-2">
-            AI in Production
-          </h1>
-          <p className="text-center text-gray-600 mb-8">
-            Deploy your Digital Twin to the cloud
+    <main className="bg-atmosphere relative min-h-screen overflow-hidden">
+      <div className="bg-grid pointer-events-none absolute inset-0" />
+
+      <DemoBanner quota={quota} />
+
+      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col px-4 pb-10 pt-10 sm:px-6 sm:pt-14">
+        <header className="animate-rise mb-8 max-w-2xl">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--copper)]">
+            Portfolio demo
           </p>
+          <h1 className="font-[family-name:var(--font-display)] text-4xl leading-[1.1] text-[var(--sand)] sm:text-5xl md:text-6xl">
+            Vitor Alves
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-[var(--sand-muted)] sm:text-lg">
+            Senior frontend engineer. This page is a live digital twin: persona, memory, and model
+            wired through a small serverless AWS architecture.
+          </p>
+        </header>
 
-          <div className="h-[600px]">
-            <Twin />
-          </div>
-
-          <footer className="mt-8 text-center text-sm text-gray-500">
-            <p>Week 2: Building Your Digital Twin</p>
-          </footer>
+        <div className="animate-rise-delay h-[min(680px,70vh)] flex-1">
+          <Twin onQuotaChange={setQuota} />
         </div>
+
+        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--sand-muted)]">
+          <p>Next.js · Lambda · Bedrock · Terraform · CloudFront</p>
+          <a
+            href="https://github.com/vitoralves/twin"
+            className="text-[var(--copper)] transition hover:text-[var(--sand)]"
+            target="_blank"
+            rel="noreferrer"
+          >
+            View source
+          </a>
+        </footer>
       </div>
     </main>
   );

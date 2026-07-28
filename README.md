@@ -1,128 +1,157 @@
-# AI Digital Twin — Frontend
+# Digital Twin
 
-A production-minded chat UI for an **AI digital twin**: a persona-backed assistant that talks like you, remembers the conversation, and runs on a serverless AWS stack.
+A live AI digital twin of **Vitor Alves** — persona-backed chat with conversation memory, deployed as a serverless AWS stack and provisioned with Terraform.
 
-From Next.js static export through Terraform-provisioned CloudFront, API Gateway, Lambda, S3, and Amazon Bedrock.
+**Live demo:** [https://d2nt8d8279t9us.cloudfront.net/](https://d2nt8d8279t9us.cloudfront.net/)
+
+The public demo shares a **global budget of 5 successful `/chat` calls per UTC day** (DynamoDB-backed) so Bedrock spend stays predictable while the architecture stays open to explore.
 
 ---
 
-## System overview
+## Architecture
 
-This UI is the edge of a full serverless stack — not a standalone demo page.
+```text
+Browser (Next.js static export)
+    │  HTTPS
+    ▼
+CloudFront ──► S3 (frontend assets)
+    │
+    │  POST /chat · GET /quota
+    ▼
+API Gateway (HTTP) ──► Lambda (FastAPI + Mangum)
+                           │
+                           ├── Amazon Bedrock (Nova) — model inference
+                           ├── S3 — per-session conversation memory
+                           └── DynamoDB — shared daily chat quota
+```
 
-| Layer | Role |
+| Layer | Choice |
 | --- | --- |
-| **UI** | Session-aware chat client (Next.js + TypeScript + Tailwind) |
-| **API** | FastAPI on AWS Lambda behind API Gateway |
-| **LLM** | Amazon Bedrock (Nova) — no model credentials in the browser |
-| **Memory** | Per-session conversation history in a private S3 bucket |
-| **Delivery** | Static export → S3 → CloudFront (HTTPS, global edge) |
-| **IaC** | Environments via Terraform workspaces (`dev` / `test` / `prod`) |
+| UI | Next.js (static export) + TypeScript + Tailwind |
+| CDN | CloudFront (HTTPS, edge cache) |
+| API | API Gateway HTTP API → Lambda |
+| App | FastAPI + Mangum |
+| LLM | Amazon Bedrock (`Converse` API) |
+| Memory | Private S3 objects keyed by `session_id` |
+| Quota | DynamoDB counter (UTC calendar day, TTL cleanup) |
+| IaC | Terraform workspaces (`dev` / `test` / `prod`) |
+| CI/CD | GitHub Actions (OIDC → AWS, no long-lived keys) |
 
-The browser never talks to Bedrock directly. It only calls `/chat`; infrastructure and IAM stay on AWS.
+The browser never talks to Bedrock. It only calls the API; IAM and model access stay on AWS.
 
 ---
 
 ## Features
 
-- Streaming-feel chat UX with user / assistant turns and loading state
-- Stable `session_id` so history survives across messages
-- `NEXT_PUBLIC_API_URL` wired at deploy time from Terraform outputs
-- Static export (`output: 'export'`) ready for S3 + CloudFront
-- CORS-safe against the CloudFront origin configured in Lambda
+- Persona twin grounded in local profile data (`backend/data`)
+- Session-aware chat history persisted in S3
+- Shared daily rate limit (5 successful chats / UTC day) with soft UI messaging
+- Request guardrails: length limits, UUID session IDs, control-character filtering, basic prompt-injection patterns
+- CORS locked to the CloudFront (or custom domain) origin
+- Least-privilege Lambda policy for S3 memory, Bedrock invoke, and DynamoDB quota
 
 ---
 
-## Stack
+## CI/CD
 
-- **Next.js 16** (App Router) · **React 19** · **TypeScript**
-- **Tailwind CSS 4** · **lucide-react**
-- Talks to a **Python FastAPI** backend on **AWS Lambda**
-- Deployed with **Terraform** + shell scripts under `/scripts` and `/terraform`
+GitHub Actions workflows under `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `deploy.yaml` | Push to `main` or manual dispatch | Assumes AWS via OIDC, builds Lambda zip, `terraform apply`, builds frontend, syncs to S3, invalidates CloudFront |
+| `destroy.yaml` | Manual dispatch + confirmation | Empties app buckets and destroys the selected workspace |
+
+Auth uses **GitHub OIDC** → IAM role `github-actions-twin-deploy` (no AWS access keys in GitHub).
+
+Required GitHub secrets (repo or environment):
+
+- `AWS_ROLE_ARN`
+- `AWS_ACCOUNT_ID`
+- `DEFAULT_AWS_REGION`
+
+Environments: `dev`, `test`, `prod` (matched to Terraform workspaces).
+
+> Note: Repositories created after July 15, 2026 use GitHub’s [immutable OIDC subject claims](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/) (`repo:owner@id/repo@id:...`). The IAM trust policy must allow that format.
 
 ---
 
-## Quick start (local)
+## Local development
+
+### Backend
 
 ```bash
-# From repo root — start the API first (see /backend)
-cd frontend
-cp .env.example .env.local   # if present, or create one:
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+cd backend
+cp ../.env.example ../.env   # fill AWS region / Bedrock access for local calls
+uv sync
+uv run uvicorn server:app --reload --port 8000
+```
 
+Without `RATE_LIMIT_TABLE`, the quota uses an in-process counter (resets when the process restarts).
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
+# NEXT_PUBLIC_API_URL=http://localhost:8000
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_API_URL` | Base URL of the twin API (local or API Gateway) |
-
-No AWS credentials or model keys belong in the frontend.
-
 ---
 
-## Production deploy
+## Deploy
 
-From the repo root (requires AWS CLI + Terraform + Docker for the Lambda package):
+Prerequisites: AWS CLI, Terraform, Docker (Lambda package build), Node.js, `uv`.
 
 ```bash
 ./scripts/deploy.sh test    # or: dev | prod
+./scripts/destroy.sh test
 ```
 
-That script:
+`deploy.sh` will:
 
-1. Builds the Lambda zip  
-2. Applies Terraform for the workspace  
-3. Writes `NEXT_PUBLIC_API_URL` from the API Gateway output  
-4. Runs `npm run build` and syncs `out/` to the frontend S3 bucket  
-
-Destroy with `./scripts/destroy.sh <environment>`.
+1. Build `backend/lambda-deployment.zip`
+2. Init Terraform with the remote S3 backend + workspace
+3. Apply infrastructure (including DynamoDB quota table)
+4. Write `frontend/.env.production` from the API Gateway output
+5. Build the static export and sync to the frontend bucket
 
 ---
 
-## Architecture (frontend’s place in the system)
+## Security notes
 
-```text
-Browser (this app)
-    │  HTTPS
-    ▼
-CloudFront ──► S3 (static Next export)
-    │
-    │  POST /chat
-    ▼
-API Gateway ──► Lambda (FastAPI + Mangum)
-                    │
-                    ├── Amazon Bedrock (LLM)
-                    └── S3 (conversation memory)
-```
-
-CloudFront is intentional: HTTPS, custom-domain ready, edge caching, and a clean public URL — better than exposing the raw S3 website endpoint.
-
----
-
-## Design choices
-
-- **Static Next.js export** into an S3 + CloudFront pipeline (no Node server in prod)
-- **Public UI / private LLM boundary** — Bedrock and IAM never reach the browser
-- **Deploy-time config** — `NEXT_PUBLIC_API_URL` comes from Terraform outputs
-- **Session-backed chat** — UX matches stateful memory on the API
-- **Multi-environment** — `dev` / `test` / `prod` via Terraform workspaces
+- Model credentials never ship to the client
+- Conversation memory bucket is private (block public access)
+- API CORS allow-list matches the CloudFront/custom domain origin
+- Chat input validated before Bedrock is called; failed calls release a reserved quota slot
+- Lambda IAM is scoped to the memory bucket, Bedrock invoke, and the quota table (not account-wide S3/Bedrock admin)
+- Frontend S3 still uses a public website origin for CloudFront (acceptable for a static demo; tightening with OAC is a natural next step)
 
 ---
 
 ## Project layout
 
 ```text
-frontend/
-  app/                 # App Router pages
-  components/twin.tsx  # Chat client + API integration
-  public/              # Static assets
-terraform/             # AWS infrastructure (sibling)
-scripts/               # deploy.sh / destroy.sh (sibling)
-backend/               # FastAPI + Lambda handler (sibling)
+.
+├── frontend/               # Next.js UI (static export)
+├── backend/                # FastAPI app, Lambda handler, persona data
+├── terraform/              # AWS infrastructure
+├── scripts/                # deploy.sh / destroy.sh
+└── .github/workflows/      # CI/CD (deploy + destroy)
 ```
 
-Clone it, swap the persona data under `backend/data`, and deploy your own twin.
+---
+
+## API (high level)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness |
+| `GET` | `/quota` | Shared daily usage (`used`, `remaining`, `daily_limit`) |
+| `POST` | `/chat` | Chat turn (counts against quota only when successful) |
+| `GET` | `/conversation/{session_id}` | Load stored history |
+
+`POST /chat` returns `429` with a clear message when the shared daily limit is exhausted.

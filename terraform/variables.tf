@@ -51,3 +51,9 @@ variable "root_domain" {
   type        = string
   default     = ""
 }
+
+variable "daily_chat_limit" {
+  description = "Shared global successful /chat calls allowed per UTC calendar day"
+  type        = number
+  default     = 5
+}

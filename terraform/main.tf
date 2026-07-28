@@ -109,17 +109,74 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_bedrock" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
-  role       = aws_iam_role.lambda_role.name
+resource "aws_dynamodb_table" "rate_limit" {
+  name         = "${local.name_prefix}-chat-quota"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+  tags         = local.common_tags
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+
+  attribute {
+    name = "sk"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_s3" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-  role       = aws_iam_role.lambda_role.name
+resource "aws_iam_role_policy" "lambda_app" {
+  name = "${local.name_prefix}-lambda-app"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "MemoryBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.memory.arn}/*"
+      },
+      {
+        Sid      = "MemoryBucketList"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.memory.arn
+      },
+      {
+        Sid    = "BedrockConverse"
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:Converse"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ChatQuotaTable"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = aws_dynamodb_table.rate_limit.arn
+      }
+    ]
+  })
 }
 
-# Lambda function
 resource "aws_lambda_function" "api" {
   filename         = "${path.module}/../backend/lambda-deployment.zip"
   function_name    = "${local.name_prefix}-api"
@@ -133,16 +190,20 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      CORS_ORIGINS     = var.use_custom_domain ? "https://${var.root_domain},https://www.${var.root_domain}" : "https://${aws_cloudfront_distribution.main.domain_name}"
-      S3_BUCKET        = aws_s3_bucket.memory.id
-      USE_S3           = "true"
-      BEDROCK_MODEL_ID = var.bedrock_model_id
+      CORS_ORIGINS       = var.use_custom_domain ? "https://${var.root_domain},https://www.${var.root_domain}" : "https://${aws_cloudfront_distribution.main.domain_name}"
+      S3_BUCKET          = aws_s3_bucket.memory.id
+      USE_S3             = "true"
+      BEDROCK_MODEL_ID   = var.bedrock_model_id
+      RATE_LIMIT_TABLE   = aws_dynamodb_table.rate_limit.name
+      DAILY_CHAT_LIMIT   = tostring(var.daily_chat_limit)
+      DEFAULT_AWS_REGION = data.aws_region.current.region
     }
   }
 
-  # Ensure Lambda waits for the distribution to exist
   depends_on = [aws_cloudfront_distribution.main]
 }
+
+data "aws_region" "current" {}
 
 # API Gateway HTTP API
 resource "aws_apigatewayv2_api" "main" {
@@ -154,9 +215,16 @@ resource "aws_apigatewayv2_api" "main" {
     allow_credentials = false
     allow_headers     = ["*"]
     allow_methods     = ["GET", "POST", "OPTIONS"]
-    allow_origins     = ["*"]
-    max_age           = 300
+    allow_origins = var.use_custom_domain ? [
+      "https://${var.root_domain}",
+      "https://www.${var.root_domain}"
+      ] : [
+      "https://${aws_cloudfront_distribution.main.domain_name}"
+    ]
+    max_age = 300
   }
+
+  depends_on = [aws_cloudfront_distribution.main]
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -196,6 +264,12 @@ resource "aws_apigatewayv2_route" "get_health" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "get_quota" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /quota"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 # Lambda permission for API Gateway
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -208,7 +282,7 @@ resource "aws_lambda_permission" "api_gw" {
 # CloudFront distribution
 resource "aws_cloudfront_distribution" "main" {
   aliases = local.aliases
-  
+
   viewer_certificate {
     acm_certificate_arn            = var.use_custom_domain ? aws_acm_certificate.site[0].arn : null
     cloudfront_default_certificate = var.use_custom_domain ? false : true

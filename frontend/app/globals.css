@@ -1,6 +1,16 @@
 @import 'tailwindcss';
 
-/* Smooth scrolling animation keyframe */
+:root {
+  --ink: #12151a;
+  --ink-soft: #1c222b;
+  --panel: rgba(255, 248, 240, 0.04);
+  --line: rgba(255, 248, 240, 0.12);
+  --sand: #f4ebe0;
+  --sand-muted: #c9bdb0;
+  --copper: #d08a4a;
+  --copper-deep: #b56f32;
+}
+
 @keyframes bounce {
   0%,
   80%,
@@ -8,7 +18,28 @@
     transform: translateY(0);
   }
   40% {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
   }
 }
 
@@ -22,4 +53,27 @@
 
 .delay-200 {
   animation-delay: 0.2s;
+}
+
+.animate-rise {
+  animation: rise 0.7s ease-out both;
+}
+
+.animate-rise-delay {
+  animation: rise 0.8s ease-out 0.12s both;
+}
+
+.bg-atmosphere {
+  background:
+    radial-gradient(ellipse 80% 55% at 10% -10%, rgba(208, 138, 74, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 90% 0%, rgba(90, 120, 140, 0.18), transparent 50%),
+    linear-gradient(165deg, #0f1217 0%, #171c24 45%, #12151a 100%);
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(244, 235, 224, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 235, 224, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black 20%, transparent 90%);
 }

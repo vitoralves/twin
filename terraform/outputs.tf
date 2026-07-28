@@ -27,3 +27,8 @@ output "custom_domain_url" {
   description = "Root URL of the production site"
   value       = var.use_custom_domain ? "https://${var.root_domain}" : ""
 }
+
+output "rate_limit_table" {
+  description = "DynamoDB table used for the shared daily chat quota"
+  value       = aws_dynamodb_table.rate_limit.name
+}
