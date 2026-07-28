@@ -35,7 +35,7 @@ bedrock_client = boto3.client(
     region_name=os.getenv("DEFAULT_AWS_REGION", "us-east-1"),
 )
 
-BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "global.amazon.nova-2-lite-v1:0")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-micro-v1:0")
 USE_S3 = os.getenv("USE_S3", "false").lower() == "true"
 S3_BUCKET = os.getenv("S3_BUCKET", "")
 MEMORY_DIR = os.getenv("MEMORY_DIR", "../memory")
@@ -155,8 +155,13 @@ def call_bedrock(conversation: List[Dict], user_message: str) -> str:
         raise
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
+        error_message = e.response["Error"].get("Message", str(e))
+        print(f"Bedrock ClientError [{error_code}]: {error_message}")
         if error_code == "ValidationException":
-            raise HTTPException(status_code=400, detail="Invalid message format for Bedrock")
+            raise HTTPException(
+                status_code=400,
+                detail="Bedrock rejected the request. Check the model ID (use an inference profile, e.g. us.amazon.nova-micro-v1:0).",
+            )
         if error_code == "AccessDeniedException":
             raise HTTPException(status_code=403, detail="Access denied to Bedrock model")
         raise HTTPException(status_code=500, detail="Bedrock request failed")

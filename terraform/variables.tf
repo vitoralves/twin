@@ -17,9 +17,9 @@ variable "environment" {
 }
 
 variable "bedrock_model_id" {
-  description = "Bedrock model ID"
+  description = "Bedrock inference profile ID (on-demand model IDs are rejected; use e.g. us.amazon.nova-micro-v1:0)"
   type        = string
-  default     = "amazon.nova-micro-v1:0"
+  default     = "us.amazon.nova-micro-v1:0"
 }
 
 variable "lambda_timeout" {
