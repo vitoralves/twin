@@ -50,9 +50,6 @@ INJECTION_PATTERNS = [
         r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)",
         r"disregard\s+(all\s+)?(previous|prior|above)",
         r"you\s+are\s+now\s+(dan|jailbroken|unrestricted)",
-        r"system\s*:\s*",
-        r"<\|?\s*system\s*\|?>",
-        r"\[\[?\s*system\s*\]\]?",
     ]
 ]
 
@@ -150,7 +147,12 @@ def call_bedrock(conversation: List[Dict], user_message: str) -> str:
                 "topP": 0.9,
             },
         )
-        return response["output"]["message"]["content"][0]["text"]
+        text = extract_bedrock_text(response)
+        if not text:
+            raise HTTPException(status_code=502, detail="Empty response from Bedrock")
+        return text
+    except HTTPException:
+        raise
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "ValidationException":
@@ -158,6 +160,21 @@ def call_bedrock(conversation: List[Dict], user_message: str) -> str:
         if error_code == "AccessDeniedException":
             raise HTTPException(status_code=403, detail="Access denied to Bedrock model")
         raise HTTPException(status_code=500, detail="Bedrock request failed")
+
+
+def extract_bedrock_text(response: dict) -> str:
+    content = (
+        response.get("output", {})
+        .get("message", {})
+        .get("content", [])
+    )
+    chunks = []
+    for part in content:
+        if isinstance(part, dict) and isinstance(part.get("text"), str):
+            text = part["text"].strip()
+            if text:
+                chunks.append(text)
+    return "\n".join(chunks).strip()
 
 
 @app.get("/")
@@ -226,18 +243,6 @@ async def chat(request: ChatRequest):
     finally:
         if not completed:
             release_slot()
-
-
-@app.get("/conversation/{session_id}")
-async def get_conversation(session_id: str):
-    if not SESSION_ID_PATTERN.match(session_id):
-        raise HTTPException(status_code=400, detail="session_id must be a valid UUID")
-    try:
-        conversation = load_conversation(session_id)
-        return {"session_id": session_id, "messages": conversation}
-    except Exception as e:
-        print(f"Error loading conversation: {str(e)}")
-        raise HTTPException(status_code=500, detail="Unable to load conversation")
 
 
 if __name__ == "__main__":

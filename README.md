@@ -152,6 +152,5 @@ Prerequisites: AWS CLI, Terraform, Docker (Lambda package build), Node.js, `uv`.
 | `GET` | `/health` | Liveness |
 | `GET` | `/quota` | Shared daily usage (`used`, `remaining`, `daily_limit`) |
 | `POST` | `/chat` | Chat turn (counts against quota only when successful) |
-| `GET` | `/conversation/{session_id}` | Load stored history |
 
 `POST /chat` returns `429` with a clear message when the shared daily limit is exhausted.
